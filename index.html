@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GC Heavy Machinery — Meeting Minutes</title>
+<style>
+  :root{
+    --ink:#16181C;
+    --paper:#F4F1EA;
+    --paper-2:#EBE7DC;
+    --line:#CFC8B6;
+    --line-2:#DAD4C4;
+    --steel:#B8420E;
+    --steel-d:#933309;
+    --muted:#6A6557;
+    --muted-2:#8C8676;
+    --shadow:0 1px 0 rgba(0,0,0,.04), 0 2px 8px rgba(20,18,12,.06);
+    --mono:'IBM Plex Mono','SF Mono',ui-monospace,Menlo,monospace;
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  body{min-height:100vh;display:flex;flex-direction:column}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.012) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.5), transparent 60%);
+    mix-blend-mode:multiply}
+
+  .wrap{position:relative;z-index:1;width:100%;max-width:1080px;
+    margin:0 auto;padding:0 22px;flex:1;display:flex;flex-direction:column}
+
+  header{padding:46px 0 26px;border-bottom:3px solid var(--ink);
+    position:relative;overflow:hidden}
+  .excavator{position:absolute;top:30px;right:-14px;width:340px;
+    height:auto;opacity:.13;pointer-events:none;z-index:0}
+  .excavator path,.excavator rect,.excavator circle,.excavator polygon{
+    fill:#7E7A6E}
+  header > *{position:relative;z-index:1}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;
+    text-transform:uppercase;color:var(--steel-d);font-weight:600;margin-bottom:14px}
+  h1{font-family:var(--serif);font-size:clamp(34px,6vw,58px);line-height:1.02;
+    letter-spacing:-.02em;font-weight:700}
+  .sub{margin-top:14px;font-size:15px;color:var(--muted);max-width:54ch;line-height:1.55}
+  .meta-strip{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px 26px;
+    font-family:var(--mono);font-size:11px;color:var(--muted-2);
+    text-transform:uppercase;letter-spacing:.12em}
+  .meta-strip b{color:var(--ink);font-weight:600}
+
+  .toolbar{position:sticky;top:0;z-index:5;background:var(--paper);
+    padding:18px 0;border-bottom:1px solid var(--line);
+    display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .search{flex:1;min-width:220px;position:relative}
+  .search input{width:100%;padding:13px 16px 13px 42px;font-size:15px;
+    font-family:var(--sans);background:var(--paper-2);color:var(--ink);
+    border:1px solid var(--line);border-radius:2px;outline:none;
+    transition:border-color .15s, background .15s}
+  .search input:focus{border-color:var(--steel);background:#fff}
+  .search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    width:18px;height:18px;stroke:var(--muted-2)}
+  .count{font-family:var(--mono);font-size:11px;color:var(--muted-2);
+    letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+
+  .pills{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 4px}
+  .pill{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;font-weight:600;padding:8px 15px;
+    border:1px solid var(--line);background:var(--paper-2);color:var(--muted);
+    border-radius:2px;cursor:pointer;transition:all .14s;user-select:none}
+  .pill:hover{border-color:var(--muted-2);color:var(--ink)}
+  .pill.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+  .latest{margin:24px 0 12px;border:1px solid var(--line);
+    background:linear-gradient(180deg,#fff,var(--paper-2));
+    box-shadow:var(--shadow);border-left:4px solid var(--steel)}
+  .latest-inner{padding:24px 26px;cursor:pointer;display:flex;
+    align-items:center;justify-content:space-between;gap:20px}
+  .latest-inner:hover{background:rgba(184,66,14,.04)}
+  .latest .tag{font-family:var(--mono);font-size:10px;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--steel-d);font-weight:700;margin-bottom:10px}
+  .latest .lt{font-family:var(--serif);font-size:23px;font-weight:700;
+    letter-spacing:-.01em;line-height:1.15}
+  .latest .ld{font-family:var(--mono);font-size:12px;color:var(--muted);
+    margin-top:7px;letter-spacing:.05em}
+  .open-btn{flex-shrink:0;font-family:var(--mono);font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;font-weight:600;
+    color:#fff;background:var(--steel);padding:13px 22px;border-radius:2px;
+    border:none;transition:background .15s}
+  .latest-inner:hover .open-btn{background:var(--steel-d)}
+
+  main{padding:14px 0 60px;flex:1}
+  .yeargrp{margin-top:34px}
+  .yeartitle{font-family:var(--mono);font-size:13px;font-weight:600;
+    letter-spacing:.3em;color:var(--muted);text-transform:uppercase;
+    padding-bottom:10px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:baseline}
+  .yeartitle span.cnt{font-size:11px;color:var(--muted-2);letter-spacing:.14em}
+
+  .row{display:flex;align-items:center;gap:16px;padding:17px 8px;
+    border-bottom:1px solid var(--line-2);cursor:pointer;
+    transition:background .12s, padding-left .12s}
+  .row:hover{background:rgba(184,66,14,.045);padding-left:16px}
+  .row:last-child{border-bottom:none}
+  .rdate{font-family:var(--mono);font-size:13px;font-weight:600;
+    color:var(--steel-d);width:118px;flex-shrink:0;letter-spacing:.02em}
+  .rmain{flex:1;min-width:0}
+  .rtitle{font-size:15.5px;color:var(--ink);font-weight:500;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rseries{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);
+    text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+  .rseries .fac{color:var(--steel-d);font-weight:600}
+  .row .chev{width:16px;height:16px;stroke:var(--muted-2);flex-shrink:0;
+    transition:transform .12s, stroke .12s}
+  .row:hover .chev{stroke:var(--steel);transform:translateX(3px)}
+
+  .state{padding:70px 20px;text-align:center}
+  .state .ic{font-size:34px;margin-bottom:16px;opacity:.5}
+  .state h3{font-family:var(--serif);font-size:21px;margin-bottom:8px}
+  .state p{color:var(--muted);font-size:14px;max-width:46ch;margin:0 auto;
+    line-height:1.6}
+  .state code{font-family:var(--mono);font-size:12px;background:var(--paper-2);
+    padding:2px 7px;border:1px solid var(--line);border-radius:2px;
+    color:var(--steel-d)}
+  .spinner{width:30px;height:30px;border:3px solid var(--line);
+    border-top-color:var(--steel);border-radius:50%;margin:0 auto 18px;
+    animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .viewer{position:fixed;inset:0;z-index:50;background:rgba(20,18,12,.82);
+    display:none;flex-direction:column;backdrop-filter:blur(3px)}
+  .viewer.on{display:flex;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .vbar{display:flex;align-items:center;justify-content:space-between;
+    gap:16px;padding:14px 20px;background:var(--ink);color:var(--paper)}
+  .vtitle{font-family:var(--mono);font-size:13px;letter-spacing:.06em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vactions{display:flex;gap:10px;flex-shrink:0}
+  .vbtn{font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;font-weight:600;padding:9px 16px;border-radius:2px;
+    border:1px solid rgba(244,241,234,.3);background:transparent;
+    color:var(--paper);transition:background .15s;text-decoration:none;
+    display:inline-block}
+  .vbtn:hover{background:rgba(244,241,234,.12)}
+  .vbtn.x{border-color:var(--steel);background:var(--steel);color:#fff}
+  .vbtn.x:hover{background:var(--steel-d)}
+  .vframe{flex:1;border:none;background:#525659;width:100%}
+
+  footer{padding:28px 0 36px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:11px;color:var(--muted-2);
+    letter-spacing:.08em;display:flex;justify-content:space-between;
+    flex-wrap:wrap;gap:10px}
+  footer a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line)}
+  footer a:hover{color:var(--steel-d)}
+
+  @media (max-width:620px){
+    .wrap{padding:0 16px}
+    header{padding:34px 0 22px}
+    .excavator{width:200px;top:auto;bottom:8px;right:-30px;opacity:.10}
+    .rdate{width:88px;font-size:12px}
+    .latest-inner{flex-direction:column;align-items:flex-start}
+    .open-btn{width:100%;text-align:center}
+    .vbtn{padding:9px 12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <svg class="excavator" viewBox="0 0 400 240" aria-hidden="true">
+      <rect x="20" y="186" width="186" height="34" rx="17"/>
+      <circle cx="44" cy="203" r="13"/><circle cx="182" cy="203" r="13"/>
+      <circle cx="80" cy="207" r="8"/><circle cx="116" cy="207" r="8"/>
+      <circle cx="150" cy="207" r="8"/>
+      <rect x="36" y="176" width="154" height="10" rx="4"/>
+      <path d="M70 176 L70 132 Q70 120 84 120 L150 120 L168 100 L212 100
+               Q224 100 224 114 L224 176 Z"/>
+      <path d="M150 120 L168 102 L206 102 Q214 102 214 112 L214 138
+               L150 138 Z" fill="#EBE7DC"/>
+      <rect x="60" y="138" width="22" height="38" rx="4"/>
+      <path d="M206 130 L292 70 L308 84 L228 150 Z"/>
+      <path d="M292 70 L356 132 L342 148 L280 88 Z"/>
+      <rect x="236" y="92" width="60" height="11" rx="5"
+            transform="rotate(34 266 97)"/>
+      <path d="M348 124 L380 156 Q384 182 358 192 L330 168
+               Q322 150 332 134 Z"/>
+      <path d="M333 188 L340 198 M348 184 L356 195 M360 178 L369 189"
+            stroke="#7E7A6E" stroke-width="4" fill="none"/>
+    </svg>
+
+    <div class="kicker">Growth Circle &middot; Operating Group</div>
+    <h1>Heavy Machinery<br>Meeting Minutes</h1>
+    <p class="sub">The official archive of weekly Heavy Machinery sessions.
+      Every meeting, on the record, searchable, and readable in your browser —
+      no account, no download.</p>
+    <div class="meta-strip">
+      <div>Records&nbsp;&nbsp;<b id="m-count">—</b></div>
+      <div>Series&nbsp;&nbsp;<b id="m-series">—</b></div>
+      <div>Span&nbsp;&nbsp;<b id="m-span">—</b></div>
+      <div>Updated&nbsp;&nbsp;<b>live</b></div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
+      </svg>
+      <input id="q" type="search" autocomplete="off"
+        placeholder="Search by date, facilitator, or keyword">
+    </div>
+    <div class="count" id="result-count"></div>
+  </div>
+
+  <div class="pills" id="pills"></div>
+
+  <div id="latest-slot"></div>
+
+  <main id="list">
+    <div class="state">
+      <div class="spinner"></div>
+      <p>Loading the minutes archive…</p>
+    </div>
+  </main>
+
+  <footer>
+    <div>GC Heavy Machinery &middot; Maintained record</div>
+    <div><a id="repo-link" href="#" target="_blank" rel="noopener">Source repository</a></div>
+  </footer>
+
+</div>
+
+<div class="viewer" id="viewer">
+  <div class="vbar">
+    <div class="vtitle" id="v-title">Document</div>
+    <div class="vactions">
+      <a class="vbtn" id="v-newtab" href="#" target="_blank" rel="noopener">Open in tab</a>
+      <button class="vbtn x" id="v-close">Close</button>
+    </div>
+  </div>
+  <iframe class="vframe" id="v-frame" title="Meeting minutes document"></iframe>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ═══════════════════════════════════════════════════════════
+     CONFIG — already set for jocelynrenaud-commits.
+     Only change GH_REPO/GH_BRANCH if you named things differently.
+     ═══════════════════════════════════════════════════════════ */
+  var CONFIG = {
+    GH_USER:   "jocelynrenaud-commits",
+    GH_REPO:   "gc-heavy-machinery-minutes",
+    GH_BRANCH: "main",
+    MINUTES_DIR: "minutes"
+  };
+  /* ═══════════════════════════════════════════════════════════ */
+
+  var API = "https://api.github.com/repos/" + CONFIG.GH_USER + "/" +
+            CONFIG.GH_REPO + "/git/trees/" + CONFIG.GH_BRANCH + "?recursive=1";
+  var RAW = "https://raw.githubusercontent.com/" + CONFIG.GH_USER + "/" +
+            CONFIG.GH_REPO + "/" + CONFIG.GH_BRANCH + "/";
+  var REPO_URL = "https://github.com/" + CONFIG.GH_USER + "/" + CONFIG.GH_REPO;
+
+  var listEl=document.getElementById('list'),
+      latestEl=document.getElementById('latest-slot'),
+      qEl=document.getElementById('q'),
+      rcEl=document.getElementById('result-count'),
+      pillsEl=document.getElementById('pills');
+  var ALL=[], SERIES_FILTER='ALL';
+
+  document.getElementById('repo-link').href = REPO_URL;
+
+  function titleCase(s){
+    return s.replace(/[-_]+/g,' ').trim()
+            .replace(/\b\w/g,function(c){return c.toUpperCase();});
+  }
+
+  /* Path conventions supported (most specific first):
+       minutes/<series>/<year>/YYYY-MM-DD__facilitator.pdf
+       minutes/<series>/YYYY-MM-DD__facilitator.pdf
+       minutes/<year>/YYYY-MM-DD-...pdf
+       minutes/YYYY-MM-DD-...pdf
+     "__facilitator" suffix is optional. */
+  function parseEntry(path){
+    if(!/\.pdf$/i.test(path)) return null;
+    var parts=path.split('/');
+    var file=parts.pop();
+    var mid=parts.slice(1);
+    var m=file.match(/(\d{4})-(\d{2})-(\d{2})/);
+    var dateObj=null,dateLabel=file.replace(/\.pdf$/i,'');
+    if(m){
+      dateObj=new Date(+m[1],+m[2]-1,+m[3]);
+      dateLabel=dateObj.toLocaleDateString('en-US',
+        {year:'numeric',month:'long',day:'numeric'});
+    }
+    var fac='';
+    var stem=file.replace(/\.pdf$/i,'');
+    var fm=stem.split(/__|--/);
+    if(fm.length>1) fac=titleCase(fm.slice(1).join(' '));
+
+    var series='General';
+    for(var i=0;i<mid.length;i++){
+      if(!/^\d{4}$/.test(mid[i])){ series=titleCase(mid[i]); break; }
+    }
+    var t=fm[0].replace(/\d{4}-\d{2}-\d{2}[-_]?/,'');
+    t=titleCase(t);
+    if(!t) t=series+" — Weekly Meeting";
+
+    return {
+      path:path,file:file,title:t,series:series,facilitator:fac,
+      date:dateObj,dateLabel:dateLabel,
+      year:m?m[1]:'Undated',
+      url:RAW+path.split('/').map(encodeURIComponent).join('/'),
+      key:(file+' '+t+' '+series+' '+fac+' '+dateLabel).toLowerCase()
+    };
+  }
+
+  function fmtSpan(items){
+    var d=items.filter(function(x){return x.date;});
+    if(!d.length) return '—';
+    var o={month:'short',year:'numeric'};
+    var a=d[d.length-1].date.toLocaleDateString('en-US',o),
+        b=d[0].date.toLocaleDateString('en-US',o);
+    return a===b?a:a+' – '+b;
+  }
+
+  function openDoc(it){
+    document.getElementById('v-title').textContent=
+      it.title+'  ·  '+it.dateLabel+(it.facilitator?'  ·  '+it.facilitator:'');
+    document.getElementById('v-frame').src=it.url;
+    document.getElementById('v-newtab').href=it.url;
+    document.getElementById('viewer').classList.add('on');
+    document.body.style.overflow='hidden';
+  }
+  function closeDoc(){
+    document.getElementById('viewer').classList.remove('on');
+    document.getElementById('v-frame').src='';
+    document.body.style.overflow='';
+  }
+  document.getElementById('v-close').addEventListener('click',closeDoc);
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape') closeDoc();
+  });
+
+  function rowEl(it){
+    var r=document.createElement('div'); r.className='row';
+    var sub=it.series+(it.facilitator
+      ? ' &middot; <span class="fac">'+it.facilitator+'</span>' : '');
+    r.innerHTML=
+      '<div class="rdate">'+(it.date
+        ? it.date.toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'})
+        : 'Undated')+'</div>'+
+      '<div class="rmain">'+
+        '<div class="rtitle">'+it.title+'</div>'+
+        '<div class="rseries">'+sub+'</div>'+
+      '</div>'+
+      '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" '+
+        'stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
+    r.addEventListener('click',function(){ openDoc(it); });
+    return r;
+  }
+
+  function renderLatest(items){
+    latestEl.innerHTML='';
+    var d=items.filter(function(x){return x.date;});
+    if(!d.length) return;
+    var L=d[0];
+    var box=document.createElement('div'); box.className='latest';
+    box.innerHTML=
+      '<div class="latest-inner"><div>'+
+        '<div class="tag">Most recent meeting</div>'+
+        '<div class="lt">'+L.title+'</div>'+
+        '<div class="ld">'+L.dateLabel+'  ·  '+L.series+
+          (L.facilitator?'  ·  '+L.facilitator:'')+'</div>'+
+      '</div><button class="open-btn">Read minutes →</button></div>';
+    box.querySelector('.latest-inner')
+       .addEventListener('click',function(){ openDoc(L); });
+    latestEl.appendChild(box);
+  }
+
+  function renderPills(){
+    var series=['ALL'];
+    ALL.forEach(function(x){
+      if(series.indexOf(x.series)<0) series.push(x.series);
+    });
+    if(series.length<=2){ pillsEl.innerHTML=''; return; }
+    pillsEl.innerHTML='';
+    series.forEach(function(s){
+      var p=document.createElement('div');
+      p.className='pill'+(SERIES_FILTER===s?' on':'');
+      p.textContent = s==='ALL' ? 'All meetings' : s;
+      p.addEventListener('click',function(){
+        SERIES_FILTER=s; renderPills(); applyFilters();
+      });
+      pillsEl.appendChild(p);
+    });
+  }
+
+  function render(items){
+    listEl.innerHTML='';
+    if(!items.length){
+      listEl.innerHTML='<div class="state"><div class="ic">⌕</div>'+
+        '<h3>No minutes match</h3><p>Try a different search, or tap '+
+        '“All meetings”.</p></div>';
+      rcEl.textContent='0 results'; return;
+    }
+    rcEl.textContent=items.length+(items.length===1?' record':' records');
+    var byYear={};
+    items.forEach(function(it){ (byYear[it.year]=byYear[it.year]||[]).push(it); });
+    Object.keys(byYear).sort(function(a,b){return b.localeCompare(a);})
+      .forEach(function(yr){
+        var g=document.createElement('div'); g.className='yeargrp';
+        var h=document.createElement('div'); h.className='yeartitle';
+        h.innerHTML='<span style="font-weight:700;color:var(--ink);'+
+          'font-size:13px;letter-spacing:.3em">'+yr+'</span>'+
+          '<span class="cnt">'+byYear[yr].length+' meeting'+
+          (byYear[yr].length===1?'':'s')+'</span>';
+        g.appendChild(h);
+        byYear[yr].forEach(function(it){ g.appendChild(rowEl(it)); });
+        listEl.appendChild(g);
+      });
+  }
+
+  function applyFilters(){
+    var q=qEl.value.trim().toLowerCase();
+    var out=ALL.filter(function(x){
+      var okS = SERIES_FILTER==='ALL' || x.series===SERIES_FILTER;
+      var okQ = !q || x.key.indexOf(q)>-1;
+      return okS && okQ;
+    });
+    renderLatest(out);
+    render(out);
+  }
+  qEl.addEventListener('input',applyFilters);
+
+  function showError(kind){
+    var msg;
+    if(kind==='ratelimit'){
+      msg='<div class="ic">⏳</div><h3>GitHub is briefly rate-limited</h3>'+
+        '<p>The public API allows 60 requests/hour. Wait a few minutes and '+
+        'reload — the minutes are safe.</p>';
+    } else if(kind==='empty'){
+      msg='<div class="ic">▢</div><h3>No minutes published yet</h3>'+
+        '<p>Once PDFs are added under <code>'+CONFIG.MINUTES_DIR+
+        '/</code>, they appear here automatically.</p>';
+    } else if(kind==='notfound'){
+      msg='<div class="ic">⚠</div><h3>Repository not found</h3>'+
+        '<p>Confirm the repo <code>'+CONFIG.GH_REPO+'</code> exists, is '+
+        '<b>public</b>, and the branch is <code>'+CONFIG.GH_BRANCH+'</code>.</p>';
+    } else {
+      msg='<div class="ic">⚠</div><h3>Could not reach the archive</h3>'+
+        '<p>Check that the repository is public and the name is correct.</p>';
+    }
+    listEl.innerHTML='<div class="state">'+msg+'</div>';
+  }
+
+  function load(){
+    fetch(API,{headers:{'Accept':'application/vnd.github+json'}})
+      .then(function(res){
+        if(res.status===403) throw {code:'ratelimit'};
+        if(res.status===404) throw {code:'notfound'};
+        if(!res.ok) throw {code:'generic'};
+        return res.json();
+      })
+      .then(function(data){
+        if(!data.tree){ showError('generic'); return; }
+        var dir=CONFIG.MINUTES_DIR.replace(/\/+$/,'')+'/';
+        ALL=data.tree
+          .filter(function(n){
+            return n.type==='blob' &&
+                   n.path.indexOf(dir)===0 &&
+                   /\.pdf$/i.test(n.path);
+          })
+          .map(function(n){ return parseEntry(n.path); })
+          .filter(Boolean)
+          .sort(function(a,b){
+            if(a.date&&b.date) return b.date-a.date;
+            if(a.date) return -1;
+            if(b.date) return 1;
+            return b.file.localeCompare(a.file);
+          });
+        if(!ALL.length){ showError('empty'); return; }
+
+        var sset={};
+        ALL.forEach(function(x){ sset[x.series]=1; });
+        document.getElementById('m-count').textContent=ALL.length;
+        document.getElementById('m-series').textContent=Object.keys(sset).length;
+        document.getElementById('m-span').textContent=fmtSpan(ALL);
+
+        renderPills();
+        applyFilters();
+      })
+      .catch(function(err){
+        showError(err&&err.code?err.code:'generic');
+      });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
